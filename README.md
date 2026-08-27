@@ -1,0 +1,89 @@
+# deposit-sdk
+
+deposit-notify 对接 SDK（Java 17+）。负责：
+
+- 调用业务接口 `/api/v1/biz/*`：统一信封 + Ed25519 请求签名（SigV4 风格 body_hash）
+- 接收充值 / 提款回调：验签 + 时间窗 + 幂等键（`data.event_key`）
+
+## 安装
+
+```bash
+mvn install
+```
+
+坐标：
+
+```xml
+<dependency>
+  <groupId>io.github.emojackob.deposit</groupId>
+  <artifactId>deposit-sdk</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+## 快速开始
+
+```java
+import emojackob.deposit.client.DepositClient;
+import emojackob.deposit.client.DepositClientConfig;
+import emojackob.deposit.sign.Keys;
+
+// 私钥 = 离线密钥生成 / openssl 生成的 PKCS#8 PEM，公钥注册到「我的 API Key」
+var privateKey = Keys.privateKeyFromPem("-----BEGIN PRIVATE KEY-----…");
+
+var client = new DepositClient(DepositClientConfig.builder()
+        .baseUrl("https://api.example.com")
+        .apiKey("dnk_xxx")
+        .privateKey(privateKey)
+        .project("demo")          // 可选，POST 请求体携带 project
+        .build());
+
+// 分配子地址
+var allocated = client.allocateAddress(new AllocateRequest(10, null, null));
+
+// 创建提款
+var wd = client.createWithdrawal(new CreateWithdrawalRequest(
+        "WD-20260825-001", "pool", "0x…", "100", "", ""));
+
+// 充值列表
+var page = client.listDeposits(Map.of("page", "1", "page_size", "50"));
+```
+
+错误处理：业务失败（`err != null`）抛 `ApiException`，含 `code` / `message` / `httpStatus`。
+
+## 回调验签
+
+```java
+import emojackob.deposit.callback.WebhookCodec;
+import emojackob.deposit.sign.WebhookVerifier;
+
+var verifier = new WebhookVerifier(instancePublicKeyPem); // 「回调公钥」页
+if (!verifier.verify(headers, bodyBytes)) {
+    return 401; // 验签失败 / 时间窗超限
+}
+var event = WebhookCodec.parseDeposit(bodyBytes).getData();
+// 幂等去重以 event.getEventKey() 为准
+```
+
+回调体统一信封 `{ project, data, err }`，`data.event_key` 为业务幂等键：
+
+- 充值：`deposit:{chain_id}:{tx_hash}[:{log_index}]`
+- 提款：`withdrawal:{order_no}:{status}`
+
+## 签名协议（与后端一致）
+
+```
+payload = METHOD & /path & canonical_params & body_hash=sha256_hex(raw_body)
+X-Signature = base64( Ed25519_sign( 私钥, payload 的 UTF-8 字节 ) )
+```
+
+`canonical_params`：业务 query + recvWindow + timestamp，先 RFC3986 编码、再按 key 升序（ASCII、区分大小写）排序。
+签名数据一律在请求头（`X-API-Key` / `X-Timestamp` / `X-Recv-Window` / `X-Signature`）。
+
+## 测试
+
+```bash
+mvn test
+```
+
+测试覆盖：RFC3986 编码、canonical 排序、签名负载格式、Ed25519 验签往返、回调验签（篡改/过期）、以及本地 HTTP 服务端按后端规则重建负载验签的端到端用例。
