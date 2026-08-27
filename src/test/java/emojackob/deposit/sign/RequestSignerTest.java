@@ -25,6 +25,13 @@ class RequestSignerTest {
     }
 
     @Test
+    void canonicalParamsWithoutQueryOnlyHeaderParams() {
+        assertEquals(
+                "recvWindow=30000&timestamp=1",
+                RequestSigner.canonicalParams(Map.of(), 1L, 30000));
+    }
+
+    @Test
     void getPayloadMatchesContract() throws Exception {
         KeyPair kp = Keys.generateKeyPair();
         RequestSigner signer = new RequestSigner(kp.getPrivate(), "dnk_test");
