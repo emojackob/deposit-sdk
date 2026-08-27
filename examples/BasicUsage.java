@@ -8,7 +8,7 @@ import emojackob.deposit.model.BindRequest;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.Deposit;
 import emojackob.deposit.model.Page;
-import emojackob.deposit.model.Withdrawal;
+import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.Keys;
 import java.security.PrivateKey;
 import java.util.List;
@@ -52,7 +52,7 @@ public class BasicUsage {
             System.out.println("deposits total = " + deposits.getTotal());
 
             // 5) 创建提款（order_no 留空自动生成）
-            Withdrawal wd = client.createWithdrawal(new CreateWithdrawalRequest(
+            WithdrawalNotify wd = client.createWithdrawal(new CreateWithdrawalRequest(
                     "", "pool", "0xreceiving", "100", "", ""));
             System.out.println("withdrawal = " + wd.getOrderNo() + " / " + wd.getStatus());
 

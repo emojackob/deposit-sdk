@@ -7,7 +7,6 @@ import emojackob.deposit.client.DepositClientConfig;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.DepositNotify;
 import emojackob.deposit.model.Envelope;
-import emojackob.deposit.model.Withdrawal;
 import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.Keys;
 import emojackob.deposit.sign.WebhookVerifier;
@@ -91,7 +90,7 @@ public class WithdrawLoop {
         while (true) {
             try {
                 String orderNo = "wd-" + System.currentTimeMillis() + "-" + seq.incrementAndGet();
-                Withdrawal wd = client.createWithdrawal(
+                WithdrawalNotify wd = client.createWithdrawal(
                         new CreateWithdrawalRequest(orderNo, method, withdrawTo, amount, "", ""));
                 System.out.printf("[提款] order=%s status=%s tx=%s%n",
                         wd.getOrderNo(), wd.getStatus(), wd.getTxHash());

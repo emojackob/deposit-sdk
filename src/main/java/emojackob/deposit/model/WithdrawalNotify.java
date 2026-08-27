@@ -22,6 +22,7 @@ public class WithdrawalNotify {
     private Long blockNumber;
     private String status;
     private String error;
+    private String createdAt;
 
     public String getEventKey() {
         return eventKey;
@@ -157,5 +158,13 @@ public class WithdrawalNotify {
 
     public void setError(String error) {
         this.error = error;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 }

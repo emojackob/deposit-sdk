@@ -82,7 +82,31 @@ public final class MockDepositServer {
             respond(ex, 401, errJson("unauthorized", "invalid signature"));
             return;
         }
-        respond(ex, 409, errJson("conflict", "order_no already exists"));
+        if (ex.getRequestMethod().equals("POST")) {
+            respond(ex, 409, errJson("conflict", "order_no already exists"));
+            return;
+        }
+        // 与真实后端一致：同步响应 data 与提款回调共用同一结构（WithdrawalNotify）。
+        if (ex.getRequestURI().getPath().equals("/api/v1/biz/withdrawals")) {
+            respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"items\":["
+                    + withdrawalNotifyJson("WD-1", "sent")
+                    + "]},\"err\":null}");
+        } else {
+            respond(ex, 200, "{\"project\":\"demo\",\"data\":"
+                    + withdrawalNotifyJson("WD-1", "sent")
+                    + ",\"err\":null}");
+        }
+    }
+
+    private static String withdrawalNotifyJson(String orderNo, String status) {
+        return "{\"event_key\":\"withdrawal:" + orderNo + ":" + status + "\","
+                + "\"event_type\":\"withdrawal_status\",\"chain_id\":137,"
+                + "\"project\":\"demo\",\"order_no\":\"" + orderNo + "\",\"method\":\"pool\","
+                + "\"from\":\"0xabc\",\"to\":\"0x1\",\"amount\":\"1\","
+                + "\"amount_raw\":\"1000000000000000000\","
+                + "\"token_symbol\":\"USDT\",\"token_address\":\"0xusdt\",\"token_decimals\":6,"
+                + "\"tx_hash\":null,\"block_number\":null,\"status\":\"" + status + "\","
+                + "\"error\":null,\"created_at\":\"2026-08-25T03:30:00.000Z\"}";
     }
 
     private boolean verify(HttpExchange ex) throws IOException {

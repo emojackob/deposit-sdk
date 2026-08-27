@@ -11,6 +11,7 @@ import emojackob.deposit.model.BindRequest;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.Deposit;
 import emojackob.deposit.model.Page;
+import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.Keys;
 import emojackob.deposit.testutil.MockDepositServer;
 import java.security.KeyPair;
@@ -89,6 +90,30 @@ class DepositClientTest {
                     c.createWithdrawal(new CreateWithdrawalRequest("WD-1", "pool", "0x1", "1", null, null)));
             assertEquals("conflict", e.getCode());
             assertEquals(409, e.getHttpStatus());
+        }
+    }
+
+    @Test
+    void getWithdrawalParsesUnifiedPayload() {
+        try (DepositClient c = client()) {
+            WithdrawalNotify wd = c.getWithdrawal("WD-1");
+            assertEquals("WD-1", wd.getOrderNo());
+            assertEquals("sent", wd.getStatus());
+            assertEquals("withdrawal:WD-1:sent", wd.getEventKey());
+            assertEquals("withdrawal_status", wd.getEventType());
+            assertEquals(137, wd.getChainId());
+            assertEquals("0xabc", wd.getFrom());
+            assertEquals("0x1", wd.getTo());
+            assertEquals("2026-08-25T03:30:00.000Z", wd.getCreatedAt());
+        }
+    }
+
+    @Test
+    void listWithdrawalsParsesUnifiedPayload() {
+        try (DepositClient c = client()) {
+            List<WithdrawalNotify> items = c.listWithdrawals(List.of("WD-1"));
+            assertEquals(1, items.size());
+            assertEquals("WD-1", items.get(0).getOrderNo());
         }
     }
 }

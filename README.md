@@ -45,6 +45,10 @@ var allocated = client.allocateAddress(new AllocateRequest(10, null, null));
 var wd = client.createWithdrawal(new CreateWithdrawalRequest(
         "WD-20260825-001", "pool", "0x…", "100", "", ""));
 
+提款接口的同步响应与提款回调共用同一结构（`WithdrawalNotify`）：创建/查询返回的 `data`
+即该订单当前状态的事件快照（`event_key = withdrawal:{order_no}:{status}`），可直接复用回调解析逻辑；
+区别仅在于同步响应不签名，回调带 Ed25519 签名（见下）。
+
 // 充值列表
 var page = client.listDeposits(Map.of("page", "1", "page_size", "50"));
 ```

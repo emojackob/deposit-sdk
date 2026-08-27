@@ -14,7 +14,7 @@ import emojackob.deposit.model.Envelope;
 import emojackob.deposit.model.ItemsResult;
 import emojackob.deposit.model.OkResult;
 import emojackob.deposit.model.Page;
-import emojackob.deposit.model.Withdrawal;
+import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.RequestSigner;
 import emojackob.deposit.sign.Rfc3986;
 import emojackob.deposit.sign.SignedRequest;
@@ -90,22 +90,22 @@ public final class DepositClient implements AutoCloseable {
 
     // ---- 提款 ----
 
-    /** 创建提款订单。 */
-    public Withdrawal createWithdrawal(CreateWithdrawalRequest request) {
-        return post("/api/v1/biz/withdrawals", null, request, Withdrawal.class);
+    /** 创建提款订单；返回与提款回调相同的 data 结构（同步响应无签名，回调带签名）。 */
+    public WithdrawalNotify createWithdrawal(CreateWithdrawalRequest request) {
+        return post("/api/v1/biz/withdrawals", null, request, WithdrawalNotify.class);
     }
 
     /** 查询单个提款进度。 */
-    public Withdrawal getWithdrawal(String orderNo) {
-        return get("/api/v1/biz/withdrawals/" + orderNo, null, Withdrawal.class);
+    public WithdrawalNotify getWithdrawal(String orderNo) {
+        return get("/api/v1/biz/withdrawals/" + orderNo, null, WithdrawalNotify.class);
     }
 
     /** 批量查询提款进度。 */
-    public List<Withdrawal> listWithdrawals(List<String> orderNos) {
-        ItemsResult<Withdrawal> r = get(
+    public List<WithdrawalNotify> listWithdrawals(List<String> orderNos) {
+        ItemsResult<WithdrawalNotify> r = get(
                 "/api/v1/biz/withdrawals",
                 Map.of("order_nos", String.join(",", orderNos)),
-                new TypeReference<ItemsResult<Withdrawal>>() {});
+                new TypeReference<ItemsResult<WithdrawalNotify>>() {});
         return r == null || r.getItems() == null ? List.of() : r.getItems();
     }
 
