@@ -36,3 +36,6 @@ Thumbs.db
 .mise.local.toml
 .env
 .env.local
+
+# 示例生成的 classpath 文件
+examples/cp.txt
