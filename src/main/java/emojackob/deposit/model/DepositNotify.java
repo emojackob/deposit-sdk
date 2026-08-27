@@ -9,8 +9,17 @@ public class DepositNotify {
     private String eventType;
     private long chainId;
     private String project;
+    /** 合约充值透传的业务订单号（地址直转流为空）。 */
+    private String orderId;
+    /** 受益账户：这笔充值归属的账户地址。transfer 流 = to（子地址）；contract 流 = from（充值用户地址）。 */
+    private String accountAddr;
+    /** 实际到账地址：transfer 流 = 子地址；contract 流 = 平台资金直达地址。 */
+    private String receiver;
+    /** 充值方式：transfer（地址直转）| contract（合约充值）。 */
     private String method;
+    /** 付款人地址（充值用户）。 */
     private String from;
+    /** 交互/收款地址：transfer 流 = 子地址；contract 流 = 合约地址。 */
     private String to;
     private String amount;
     private String amountRaw;
@@ -54,6 +63,30 @@ public class DepositNotify {
 
     public void setProject(String project) {
         this.project = project;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getAccountAddr() {
+        return accountAddr;
+    }
+
+    public void setAccountAddr(String accountAddr) {
+        this.accountAddr = accountAddr;
+    }
+
+    public String getReceiver() {
+        return receiver;
+    }
+
+    public void setReceiver(String receiver) {
+        this.receiver = receiver;
     }
 
     public String getMethod() {
