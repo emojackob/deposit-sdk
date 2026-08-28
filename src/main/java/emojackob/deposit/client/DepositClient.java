@@ -102,11 +102,19 @@ public final class DepositClient implements AutoCloseable {
         return get("/api/v1/biz/withdrawals/" + orderNo, null, WithdrawalNotify.class);
     }
 
-    /** 批量查询提款进度。 */
+    /**
+     * 提款记录分页列表；query 可传 status / page / page_size。
+     * 不要传 {@code order_nos}（按单号批量查请用 {@link #listWithdrawals}）。
+     */
+    public Page<WithdrawalNotify> listWithdrawalRecords(Map<String, String> query) {
+        return get("/api/v1/biz/withdrawals", query, new TypeReference<Page<WithdrawalNotify>>() {});
+    }
+
+    /** 按已知单号批量查询提款进度（请求带 {@code order_nos}，响应仅为 items）。 */
     public List<WithdrawalNotify> listWithdrawals(List<String> orderNos) {
         ItemsResult<WithdrawalNotify> r = get(
                 "/api/v1/biz/withdrawals",
-                Map.of("order_nos", String.join(",", orderNos)),
+                Map.of("order_nos", String.join(",", orderNos == null ? List.of() : orderNos)),
                 new TypeReference<ItemsResult<WithdrawalNotify>>() {});
         return r == null || r.getItems() == null ? List.of() : r.getItems();
     }

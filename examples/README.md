@@ -21,7 +21,7 @@ CP=".:$(cat ../cp.txt)"
 javac -cp "../target/deposit-sdk-0.1.0.jar:$CP" GenerateKeys.java
 java -cp "$CP:../target/deposit-sdk-0.1.0.jar" GenerateKeys
 
-# 示例 2：完整业务流（分配/绑定/余额/充值/提款 + 错误处理）
+# 示例 2：完整业务流（分配/绑定/余额/充值/提款列表/提款 + 错误处理）
 # 先替换 BasicUsage.java 里的 baseUrl / apiKey / 私钥占位符
 javac -cp "../target/deposit-sdk-0.1.0.jar:$CP" BasicUsage.java
 java -cp "$CP:../target/deposit-sdk-0.1.0.jar" BasicUsage

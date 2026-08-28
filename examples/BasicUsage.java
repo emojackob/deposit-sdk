@@ -52,7 +52,12 @@ public class BasicUsage {
             Page<Deposit> deposits = client.listDeposits(Map.of("page", "1", "page_size", "50"));
             System.out.println("deposits total = " + deposits.getTotal());
 
-            // 5) 创建提款（order_no 留空自动生成；token 必填 ERC20 地址）
+            // 5) 提款记录分页列表（不要带 order_nos；按单号批量查用 listWithdrawals）
+            Page<WithdrawalNotify> withdrawals = client.listWithdrawalRecords(
+                    Map.of("page", "1", "page_size", "50"));
+            System.out.println("withdrawals total = " + withdrawals.getTotal());
+
+            // 6) 创建提款（order_no 留空自动生成；token 必填 ERC20 地址）
             WithdrawalNotify wd = client.createWithdrawal(new CreateWithdrawalRequest(
                     "", "pool", "0xreceiving", "100", usdt, ""));
             System.out.println("withdrawal = " + wd.getOrderNo() + " / " + wd.getStatus());

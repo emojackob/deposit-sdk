@@ -86,16 +86,36 @@ public final class MockDepositServer {
             respond(ex, 409, errJson("conflict", "order_no already exists"));
             return;
         }
-        // 与真实后端一致：同步响应 data 与提款回调共用同一结构（WithdrawalNotify）。
+        // 与真实后端一致：无 order_nos 为分页列表；带 order_nos 为按单号批量查。
         if (ex.getRequestURI().getPath().equals("/api/v1/biz/withdrawals")) {
-            respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"items\":["
-                    + withdrawalNotifyJson("WD-1", "sent")
-                    + "]},\"err\":null}");
+            if (hasQueryKey(ex, "order_nos")) {
+                respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"items\":["
+                        + withdrawalNotifyJson("WD-1", "sent")
+                        + "]},\"err\":null}");
+            } else {
+                respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"items\":["
+                        + withdrawalNotifyJson("WD-1", "sent")
+                        + "],\"total\":1,\"page\":1,\"page_size\":50},\"err\":null}");
+            }
         } else {
             respond(ex, 200, "{\"project\":\"demo\",\"data\":"
                     + withdrawalNotifyJson("WD-1", "sent")
                     + ",\"err\":null}");
         }
+    }
+
+    private static boolean hasQueryKey(HttpExchange ex, String key) {
+        String raw = ex.getRequestURI().getRawQuery();
+        if (raw == null || raw.isEmpty()) {
+            return false;
+        }
+        for (String pair : raw.split("&")) {
+            String k = pair.split("=", 2)[0];
+            if (key.equals(k)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String withdrawalNotifyJson(String orderNo, String status) {

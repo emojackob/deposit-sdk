@@ -56,6 +56,12 @@ var wd = client.createWithdrawal(new CreateWithdrawalRequest(
 
 // 充值列表
 var page = client.listDeposits(Map.of("page", "1", "page_size", "50"));
+
+// 提款记录分页列表（不要带 order_nos）
+var wdPage = client.listWithdrawalRecords(Map.of("page", "1", "page_size", "50"));
+
+// 按已知单号批量查
+var items = client.listWithdrawals(List.of("WD-20260825-001"));
 ```
 
 错误处理：业务失败（`err != null`）抛 `ApiException`，含 `code` / `message` / `httpStatus`。

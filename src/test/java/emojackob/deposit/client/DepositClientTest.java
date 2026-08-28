@@ -139,4 +139,16 @@ class DepositClientTest {
             assertEquals("WD-1", items.get(0).getOrderNo());
         }
     }
+
+    @Test
+    void listWithdrawalRecordsParsesPage() {
+        try (DepositClient c = client()) {
+            Page<WithdrawalNotify> page = c.listWithdrawalRecords(Map.of("page", "1", "page_size", "50"));
+            assertEquals(1, page.getTotal());
+            assertEquals(1, page.getPage());
+            assertEquals(50, page.getPageSize());
+            assertEquals("WD-1", page.getItems().get(0).getOrderNo());
+            assertEquals("sent", page.getItems().get(0).getStatus());
+        }
+    }
 }
