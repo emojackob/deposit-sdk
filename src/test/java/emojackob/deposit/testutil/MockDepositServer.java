@@ -58,8 +58,8 @@ public final class MockDepositServer {
             }
         } else {
             respond(ex, 200, "{\"project\":\"demo\",\"data\":{"
-                    + "\"address\":\"0xabc\",\"token\":\"native\","
-                    + "\"balance\":\"1.5\",\"balance_raw\":\"1500000000000000000\""
+                    + "\"address\":\"0xabc\",\"token\":\"USDT\","
+                    + "\"balance\":\"1.5\",\"balance_raw\":\"1500000\""
                     + "},\"err\":null}");
         }
     }

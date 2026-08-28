@@ -41,7 +41,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *  DN_CALLBACK_PATH       回调路径（默认 /callback）
  *  DN_INTERVAL_SECS       提款间隔秒（默认 30）
  *  DN_WITHDRAW_TO         提款收款地址
- *  DN_WITHDRAW_AMOUNT     提款数量（默认 0.001）
+ *  DN_TOKEN               ERC20 合约地址（必填）
+ *  DN_WITHDRAW_AMOUNT     提款数量（默认 100）
  *  DN_METHOD              提款方式 pool|contract（默认 pool）
  *
  * 用法：
@@ -56,15 +57,17 @@ public class WithdrawLoop {
         String project = env("DN_PROJECT", "");
         long intervalSecs = Long.parseLong(env("DN_INTERVAL_SECS", "30"));
         String withdrawTo = env("DN_WITHDRAW_TO", "");
-        String amount = env("DN_WITHDRAW_AMOUNT", "0.001");
+        String token = env("DN_TOKEN", "");
+        String amount = env("DN_WITHDRAW_AMOUNT", "100");
         String method = env("DN_METHOD", "pool");
         int port = Integer.parseInt(env("DN_CALLBACK_PORT", "9090"));
         String callbackPath = env("DN_CALLBACK_PATH", "/callback");
         String publicKeyPem = pem("DN_PUBLIC_KEY_FILE", "DN_PUBLIC_KEY");
         String privateKeyPem = pem("DN_PRIVATE_KEY_FILE", "DN_PRIVATE_KEY");
 
-        if (apiKey.isEmpty() || withdrawTo.isEmpty() || publicKeyPem == null || privateKeyPem == null) {
-            System.err.println("缺少配置：DN_API_KEY / DN_WITHDRAW_TO / DN_PRIVATE_KEY(或文件) / DN_PUBLIC_KEY(或文件)");
+        if (apiKey.isEmpty() || withdrawTo.isEmpty() || token.isEmpty()
+                || publicKeyPem == null || privateKeyPem == null) {
+            System.err.println("缺少配置：DN_API_KEY / DN_WITHDRAW_TO / DN_TOKEN / DN_PRIVATE_KEY(或文件) / DN_PUBLIC_KEY(或文件)");
             System.exit(2);
         }
         PrivateKey privateKey = Keys.privateKeyFromPem(privateKeyPem);
@@ -91,7 +94,7 @@ public class WithdrawLoop {
             try {
                 String orderNo = "wd-" + System.currentTimeMillis() + "-" + seq.incrementAndGet();
                 WithdrawalNotify wd = client.createWithdrawal(
-                        new CreateWithdrawalRequest(orderNo, method, withdrawTo, amount, "", ""));
+                        new CreateWithdrawalRequest(orderNo, method, withdrawTo, amount, token, ""));
                 System.out.printf("[提款] order=%s status=%s tx=%s%n",
                         wd.getOrderNo(), wd.getStatus(), wd.getTxHash());
             } catch (ApiException e) {

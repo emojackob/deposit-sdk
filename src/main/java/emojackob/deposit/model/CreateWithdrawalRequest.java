@@ -1,6 +1,6 @@
 package emojackob.deposit.model;
 
-/** 创建提款请求 data：{ order_no, method, to, amount, token, from_addr }。 */
+/** 创建提款请求 data：{ order_no, method, to, amount, token, from_addr }。token 必填 ERC20 合约地址。 */
 public class CreateWithdrawalRequest {
     private String orderNo;
     private String method;

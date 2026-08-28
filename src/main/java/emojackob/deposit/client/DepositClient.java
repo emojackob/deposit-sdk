@@ -68,12 +68,10 @@ public final class DepositClient implements AutoCloseable {
         return r != null && r.isOk();
     }
 
-    /** 查询地址余额；token 缺省为原生币。 */
+    /** 查询地址 ERC20 余额；token 为合约地址，必填。不接受空值或 {@code native}。 */
     public Balance getBalance(String address, String token) {
-        Map<String, String> query = token == null || token.isBlank()
-                ? Map.of()
-                : Map.of("token", token);
-        return get("/api/v1/biz/addresses/" + address + "/balance", query, Balance.class);
+        return get("/api/v1/biz/addresses/" + address + "/balance",
+                Map.of("token", requireErc20Token(token)), Balance.class);
     }
 
     // ---- 充值 ----
@@ -90,8 +88,12 @@ public final class DepositClient implements AutoCloseable {
 
     // ---- 提款 ----
 
-    /** 创建提款订单；返回与提款回调相同的 data 结构（同步响应无签名，回调带签名）。 */
+    /** 创建提款订单；{@code token} 必填 ERC20 合约地址。返回与提款回调相同的 data 结构（同步响应无签名，回调带签名）。 */
     public WithdrawalNotify createWithdrawal(CreateWithdrawalRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+        requireErc20Token(request.getToken());
         return post("/api/v1/biz/withdrawals", null, request, WithdrawalNotify.class);
     }
 
@@ -201,6 +203,14 @@ public final class DepositClient implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalArgumentException("cannot serialize request body", e);
         }
+    }
+
+    /** 余额与提款的 token 必须是 ERC20 合约地址。 */
+    static String requireErc20Token(String token) {
+        if (token == null || token.isBlank() || "native".equalsIgnoreCase(token.trim())) {
+            throw new IllegalArgumentException("token (ERC20 address) is required");
+        }
+        return token.trim();
     }
 
     private static String stripTrailingSlash(String url) {

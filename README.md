@@ -1,6 +1,6 @@
 # deposit-sdk
 
-deposit-notify 对接 SDK（Java 17+）。负责：
+deposit-notify 对接 SDK（Java 17+）。业务标的仅为 ERC20：余额查询与创建提款的 `token` 必填合约地址，不接受空值或 `native`。负责：
 
 - 调用业务接口 `/api/v1/biz/*`：统一信封 + Ed25519 请求签名（SigV4 风格 body_hash）
 - 接收充值 / 提款回调：验签 + 时间窗 + 幂等键（`data.event_key`）
@@ -41,9 +41,14 @@ var client = new DepositClient(DepositClientConfig.builder()
 // 分配子地址
 var allocated = client.allocateAddress(new AllocateRequest(10, null, null));
 
-// 创建提款
+// 查询 ERC20 余额（token 必填合约地址）
+var balance = client.getBalance(allocated.get(0).getAddress(),
+        "0xdAC17F958D2ee523a2206206994597C13D831ec7");
+
+// 创建提款（token 必填 ERC20 合约地址；不接受空值或 native）
 var wd = client.createWithdrawal(new CreateWithdrawalRequest(
-        "WD-20260825-001", "pool", "0x…", "100", "", ""));
+        "WD-20260825-001", "pool", "0x…", "100",
+        "0xdAC17F958D2ee523a2206206994597C13D831ec7", ""));
 
 提款接口的同步响应与提款回调共用同一结构（`WithdrawalNotify`）：创建/查询返回的 `data`
 即该订单当前状态的事件快照（`event_key = withdrawal:{order_no}:{status}`），可直接复用回调解析逻辑；

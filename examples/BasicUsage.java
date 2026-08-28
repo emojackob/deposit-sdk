@@ -43,17 +43,18 @@ public class BasicUsage {
             String subAddress = allocated.get(0).getAddress();
             System.out.println("bound = " + client.bindAddress(subAddress, new BindRequest("user-1001", null)));
 
-            // 3) 查询余额
-            Balance balance = client.getBalance(subAddress, "native");
+            // 3) 查询 ERC20 余额（token 必填合约地址）
+            String usdt = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+            Balance balance = client.getBalance(subAddress, usdt);
             System.out.println("balance = " + balance.getBalance() + " " + balance.getToken());
 
             // 4) 充值列表
             Page<Deposit> deposits = client.listDeposits(Map.of("page", "1", "page_size", "50"));
             System.out.println("deposits total = " + deposits.getTotal());
 
-            // 5) 创建提款（order_no 留空自动生成）
+            // 5) 创建提款（order_no 留空自动生成；token 必填 ERC20 地址）
             WithdrawalNotify wd = client.createWithdrawal(new CreateWithdrawalRequest(
-                    "", "pool", "0xreceiving", "100", "", ""));
+                    "", "pool", "0xreceiving", "100", usdt, ""));
             System.out.println("withdrawal = " + wd.getOrderNo() + " / " + wd.getStatus());
 
         } catch (ApiException e) {

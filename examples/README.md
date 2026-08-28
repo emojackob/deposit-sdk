@@ -45,8 +45,8 @@ Windows 下把 `.:` 换成 `.;`。
 
 ### 前置准备（平台侧，一次性）
 
-1. 管理后台完成实例初始化：所属链、代币、主地址确认启用
-2. 部署合约（至少提款合约，或先只跑 `pool` 方式并分配提款地址池）
+1. 管理后台完成实例初始化：所属链、主地址确认启用；「扫描监控 → ERC20 直转」填写代币地址
+2. 部署合约（至少提款合约，或先只跑 `pool` 方式并分配提款地址池）；提款合约地址配在「地址管理 → 提款合约」
 3. 生成接入方密钥对并注册 API Key（`GenerateKeys` 示例），**管理员授予 `withdrawals:create` 权限**
 4. 注册回调端点：指向本机可被后端访问的地址
    - 同机调试：`http://127.0.0.1:9090/callback`
@@ -62,6 +62,7 @@ DN_API_KEY=dnk_xxx \
 DN_PRIVATE_KEY_FILE=/path/private_key.pem \
 DN_PUBLIC_KEY_FILE=/path/instance_public_key.pem \
 DN_WITHDRAW_TO=0x收款地址 \
+DN_TOKEN=0xdAC17F958D2ee523a2206206994597C13D831ec7 \
 DN_INTERVAL_SECS=30 \
 java -cp "$CP:../target/deposit-sdk-0.1.0.jar" WithdrawLoop
 ```

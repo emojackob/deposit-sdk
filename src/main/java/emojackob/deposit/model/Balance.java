@@ -2,7 +2,7 @@ package emojackob.deposit.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-/** 地址余额：{ address, token, balance, balance_raw }。 */
+/** 地址 ERC20 余额：{ address, token（symbol）, balance, balance_raw }。 */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Balance {
     private String address;

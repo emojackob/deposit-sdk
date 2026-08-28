@@ -67,10 +67,19 @@ class DepositClientTest {
     @Test
     void getBalanceParses() {
         try (DepositClient c = client()) {
-            Balance b = c.getBalance("0xabc", "native");
-            assertEquals("native", b.getToken());
+            Balance b = c.getBalance("0xabc", "0xdAC17F958D2ee523a2206206994597C13D831ec7");
+            assertEquals("USDT", b.getToken());
             assertEquals("1.5", b.getBalance());
-            assertEquals("1500000000000000000", b.getBalanceRaw());
+            assertEquals("1500000", b.getBalanceRaw());
+        }
+    }
+
+    @Test
+    void getBalanceRequiresErc20Token() {
+        try (DepositClient c = client()) {
+            assertThrows(IllegalArgumentException.class, () -> c.getBalance("0xabc", null));
+            assertThrows(IllegalArgumentException.class, () -> c.getBalance("0xabc", ""));
+            assertThrows(IllegalArgumentException.class, () -> c.getBalance("0xabc", "native"));
         }
     }
 
@@ -84,10 +93,24 @@ class DepositClientTest {
     }
 
     @Test
+    void createWithdrawalRequiresErc20Token() {
+        try (DepositClient c = client()) {
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest("WD-1", "pool", "0x1", "1", null, null)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest("WD-1", "pool", "0x1", "1", "", null)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest("WD-1", "pool", "0x1", "1", "native", null)));
+        }
+    }
+
+    @Test
     void errorEnvelopeThrowsApiException() {
         try (DepositClient c = client()) {
             ApiException e = assertThrows(ApiException.class, () ->
-                    c.createWithdrawal(new CreateWithdrawalRequest("WD-1", "pool", "0x1", "1", null, null)));
+                    c.createWithdrawal(new CreateWithdrawalRequest(
+                            "WD-1", "pool", "0x1", "1",
+                            "0xdAC17F958D2ee523a2206206994597C13D831ec7", null)));
             assertEquals("conflict", e.getCode());
             assertEquals(409, e.getHttpStatus());
         }
