@@ -1,24 +1,19 @@
 package emojackob.deposit.model;
 
-/** 分配子地址请求 data：{ count, user_binding, label }。 */
+/**
+ * 分配充值地址请求 data：{ user_binding, label, count }。
+ * 三个字段均必填；count 取值 1..=100。同一 user_binding 幂等，label/count 不同则 409。
+ */
 public class AllocateRequest {
-    private Integer count;
     private String userBinding;
     private String label;
+    private Integer count;
 
     public AllocateRequest() {}
 
-    public AllocateRequest(int count, String userBinding, String label) {
-        this.count = count;
+    public AllocateRequest(String userBinding, String label, int count) {
         this.userBinding = userBinding;
         this.label = label;
-    }
-
-    public Integer getCount() {
-        return count;
-    }
-
-    public void setCount(Integer count) {
         this.count = count;
     }
 
@@ -36,5 +31,13 @@ public class AllocateRequest {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public Integer getCount() {
+        return count;
+    }
+
+    public void setCount(Integer count) {
+        this.count = count;
     }
 }

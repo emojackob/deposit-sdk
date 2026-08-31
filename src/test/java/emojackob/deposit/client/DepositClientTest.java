@@ -2,12 +2,11 @@ package emojackob.deposit.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import emojackob.deposit.model.AddressAllocation;
 import emojackob.deposit.model.AllocateRequest;
 import emojackob.deposit.model.AllocatedAddress;
 import emojackob.deposit.model.Balance;
-import emojackob.deposit.model.BindRequest;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.Deposit;
 import emojackob.deposit.model.Page;
@@ -51,17 +50,57 @@ class DepositClientTest {
     @Test
     void allocateAddressParsesAndSigns() {
         try (DepositClient c = client()) {
-            List<AllocatedAddress> r = c.allocateAddress(new AllocateRequest(1, null, null));
-            assertEquals(1, r.size());
-            assertEquals("0xabc", r.get(0).getAddress());
-            assertEquals(1, r.get(0).getIndex());
+            AddressAllocation r = c.allocateAddress(new AllocateRequest("user-1001", "primary", 1));
+            assertEquals("user-1001", r.getUserBinding());
+            assertEquals("primary", r.getLabel());
+            assertEquals(1, r.getCount());
+            List<AllocatedAddress> allocated = r.getAllocated();
+            assertEquals(1, allocated.size());
+            assertEquals("0xabc", allocated.get(0).getAddress());
+            assertEquals(1, allocated.get(0).getIndex());
+            assertEquals("user", allocated.get(0).getPurpose());
         }
     }
 
     @Test
-    void bindAddressOk() {
+    void allocateAddressRequiresFields() {
         try (DepositClient c = client()) {
-            assertTrue(c.bindAddress("0xabc", new BindRequest("user-1", null)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.allocateAddress(new AllocateRequest(null, "primary", 1)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.allocateAddress(new AllocateRequest("", "primary", 1)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.allocateAddress(new AllocateRequest("user-1001", "", 1)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.allocateAddress(new AllocateRequest("user-1001", "primary", 0)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.allocateAddress(new AllocateRequest("user-1001", "primary", 101)));
+        }
+    }
+
+    @Test
+    void getAddressAllocationByBinding() {
+        try (DepositClient c = client()) {
+            AddressAllocation r = c.getAddressAllocation("user-1001");
+            assertEquals("user-1001", r.getUserBinding());
+            assertEquals("0xabc", r.getAllocated().get(0).getAddress());
+        }
+    }
+
+    @Test
+    void getAddressAllocationByBindingRequiresUserBinding() {
+        try (DepositClient c = client()) {
+            assertThrows(IllegalArgumentException.class, () -> c.getAddressAllocation(null));
+            assertThrows(IllegalArgumentException.class, () -> c.getAddressAllocation(""));
+        }
+    }
+
+    @Test
+    void getAddressAllocationByAddress() {
+        try (DepositClient c = client()) {
+            AddressAllocation r = c.getAddressAllocationByAddress("0xabc");
+            assertEquals("user-1001", r.getUserBinding());
+            assertEquals("primary", r.getLabel());
         }
     }
 
@@ -189,6 +228,24 @@ class DepositClientTest {
             assertEquals(50, page.getPageSize());
             assertEquals("WD-1", page.getItems().get(0).getOrderNo());
             assertEquals("sent", page.getItems().get(0).getStatus());
+        }
+    }
+
+    @Test
+    void cancelWithdrawalParses() {
+        try (DepositClient c = client()) {
+            WithdrawalNotify wd = c.cancelWithdrawal("WD-NEW");
+            assertEquals("WD-NEW", wd.getOrderNo());
+            assertEquals("cancelled", wd.getStatus());
+            assertEquals("withdrawal:WD-NEW:cancelled", wd.getEventKey());
+        }
+    }
+
+    @Test
+    void cancelWithdrawalRequiresOrderNo() {
+        try (DepositClient c = client()) {
+            assertThrows(IllegalArgumentException.class, () -> c.cancelWithdrawal(null));
+            assertThrows(IllegalArgumentException.class, () -> c.cancelWithdrawal(""));
         }
     }
 }

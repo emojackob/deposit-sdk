@@ -38,11 +38,15 @@ var client = new DepositClient(DepositClientConfig.builder()
         .project("demo")          // 可选，POST 请求体携带 project
         .build());
 
-// 分配子地址
-var allocated = client.allocateAddress(new AllocateRequest(10, null, null));
+// 分配充值地址（user_binding / label / count 必填；同一 binding 幂等）
+var allocation = client.allocateAddress(new AllocateRequest("user-1001", "primary", 2));
+
+// 按 binding 查询 / 按地址反查（与 POST 返回同一 AddressAllocation）
+var same = client.getAddressAllocation("user-1001");
+var byAddr = client.getAddressAllocationByAddress(allocation.getAllocated().get(0).getAddress());
 
 // 查询 ERC20 余额（token 必填合约地址）
-var balance = client.getBalance(allocated.get(0).getAddress(),
+var balance = client.getBalance(allocation.getAllocated().get(0).getAddress(),
         "0xdAC17F958D2ee523a2206206994597C13D831ec7");
 
 // 创建提款（order_no 必填幂等键；token 必填 ERC20 合约地址）
@@ -63,6 +67,9 @@ var wdPage = client.listWithdrawalRecords(Map.of("page", "1", "page_size", "50")
 
 // 按已知单号批量查
 var items = client.listWithdrawals(List.of("WD-20260825-001"));
+
+// 取消未上链提款
+client.cancelWithdrawal("WD-20260825-001");
 ```
 
 错误处理：业务失败（`err != null`）抛 `ApiException`，含 `code` / `message` / `httpStatus`。

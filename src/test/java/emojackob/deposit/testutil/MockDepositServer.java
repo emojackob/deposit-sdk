@@ -56,20 +56,31 @@ public final class MockDepositServer {
             respond(ex, 401, errJson("unauthorized", "invalid signature"));
             return;
         }
+        String path = ex.getRequestURI().getPath();
         if (ex.getRequestMethod().equals("POST")) {
-            if (ex.getRequestURI().getPath().endsWith("/binding")) {
-                respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"ok\":true},\"err\":null}");
-            } else {
-                respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"allocated\":["
-                        + "{\"address\":\"0xabc\",\"index\":1,\"user_binding\":null,\"label\":null}"
-                        + "]},\"err\":null}");
+            if (!"/api/v1/biz/addresses".equals(path)) {
+                respond(ex, 404, errJson("not_found", "route not found"));
+                return;
             }
-        } else {
+            respond(ex, 200, "{\"project\":\"demo\",\"data\":" + allocationJson() + ",\"err\":null}");
+            return;
+        }
+        if (path.endsWith("/balance")) {
             respond(ex, 200, "{\"project\":\"demo\",\"data\":{"
                     + "\"address\":\"0xabc\",\"token\":\"USDT\","
                     + "\"balance\":\"1.5\",\"balance_raw\":\"1500000\""
                     + "},\"err\":null}");
+            return;
         }
+        respond(ex, 200, "{\"project\":\"demo\",\"data\":" + allocationJson() + ",\"err\":null}");
+    }
+
+    private static String allocationJson() {
+        return "{\"user_binding\":\"user-1001\",\"label\":\"primary\",\"count\":1,"
+                + "\"allocated\":[{"
+                + "\"address\":\"0xabc\",\"index\":1,"
+                + "\"user_binding\":\"user-1001\",\"label\":\"primary\",\"purpose\":\"user\""
+                + "}]}";
     }
 
     private void handleDeposits(HttpExchange ex) throws IOException {
@@ -95,6 +106,11 @@ public final class MockDepositServer {
         if (ex.getRequestMethod().equals("POST")
                 && WITHDRAWALS.equals(ex.getRequestURI().getPath())) {
             handleCreateWithdrawal(ex, body);
+            return;
+        }
+        if (ex.getRequestMethod().equals("POST")
+                && ex.getRequestURI().getPath().endsWith("/cancel")) {
+            handleCancelWithdrawal(ex);
             return;
         }
         // 与真实后端一致：无 order_nos 为分页列表；带 order_nos 为按单号批量查。
@@ -141,6 +157,36 @@ public final class MockDepositServer {
         String snapshot = withdrawalNotifyJson(orderNo, "created");
         created.put(orderNo, new StoredWithdrawal(fp, snapshot));
         respond(ex, 200, "{\"project\":\"demo\",\"data\":" + snapshot + ",\"err\":null}");
+    }
+
+    private void handleCancelWithdrawal(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath();
+        String prefix = WITHDRAWALS + "/";
+        String suffix = "/cancel";
+        String orderNo = path.startsWith(prefix) && path.endsWith(suffix)
+                ? path.substring(prefix.length(), path.length() - suffix.length())
+                : "WD-1";
+        StoredWithdrawal existing = created.get(orderNo);
+        if (existing != null && ("sent".equals(statusOf(existing.snapshot))
+                || "confirmed".equals(statusOf(existing.snapshot)))) {
+            respond(ex, 409, errJson("conflict", "withdrawal already broadcast"));
+            return;
+        }
+        String snapshot = withdrawalNotifyJson(orderNo, "cancelled");
+        if (existing != null) {
+            created.put(orderNo, new StoredWithdrawal(existing.fingerprint, snapshot));
+        }
+        respond(ex, 200, "{\"project\":\"demo\",\"data\":" + snapshot + ",\"err\":null}");
+    }
+
+    private static String statusOf(String snapshotJson) {
+        int i = snapshotJson.indexOf("\"status\":\"");
+        if (i < 0) {
+            return "";
+        }
+        int start = i + "\"status\":\"".length();
+        int end = snapshotJson.indexOf('"', start);
+        return end < 0 ? "" : snapshotJson.substring(start, end);
     }
 
     private static boolean hasQueryKey(HttpExchange ex, String key) {

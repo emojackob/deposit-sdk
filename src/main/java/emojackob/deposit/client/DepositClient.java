@@ -3,16 +3,13 @@ package emojackob.deposit.client;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import emojackob.deposit.model.AddressAllocation;
 import emojackob.deposit.model.AllocateRequest;
-import emojackob.deposit.model.AllocatedAddress;
-import emojackob.deposit.model.AllocatedResult;
 import emojackob.deposit.model.Balance;
-import emojackob.deposit.model.BindRequest;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.Deposit;
 import emojackob.deposit.model.Envelope;
 import emojackob.deposit.model.ItemsResult;
-import emojackob.deposit.model.OkResult;
 import emojackob.deposit.model.Page;
 import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.RequestSigner;
@@ -56,21 +53,31 @@ public final class DepositClient implements AutoCloseable {
 
     // ---- 地址 ----
 
-    /** 分配子地址。 */
-    public List<AllocatedAddress> allocateAddress(AllocateRequest request) {
-        AllocatedResult r = post("/api/v1/biz/addresses", null, request, AllocatedResult.class);
-        return r == null || r.getAllocated() == null ? List.of() : r.getAllocated();
+    /**
+     * 创建或幂等读取不可变充值地址分配（addresses:allocate）。
+     * {@code user_binding} / {@code label} 必填非空；{@code count} 为 1..=100。
+     * 同一属主下相同 {@code user_binding} 且 label/count 一致则返回原 allocation；
+     * label 或 count 不同则服务端 409。创建后不可通过业务接口修改或解绑。
+     */
+    public AddressAllocation allocateAddress(AllocateRequest request) {
+        requireAllocation(request);
+        return post("/api/v1/biz/addresses", null, request, AddressAllocation.class);
     }
 
-    /** 绑定 / 解绑用户（user_binding 传空字符串即解绑）。 */
-    public boolean bindAddress(String address, BindRequest request) {
-        OkResult r = post("/api/v1/biz/addresses/" + address + "/binding", null, request, OkResult.class);
-        return r != null && r.isOk();
+    /** 按业务用户绑定读取当前 API 属主的地址分配（addresses:read）。 */
+    public AddressAllocation getAddressAllocation(String userBinding) {
+        return get("/api/v1/biz/addresses",
+                Map.of("user_binding", requireUserBinding(userBinding)), AddressAllocation.class);
+    }
+
+    /** 按地址反查所属分配（addresses:read）。 */
+    public AddressAllocation getAddressAllocationByAddress(String address) {
+        return get("/api/v1/biz/addresses/" + requireAddress(address), null, AddressAllocation.class);
     }
 
     /** 查询地址 ERC20 余额；token 为合约地址，必填。不接受空值或 {@code native}。 */
     public Balance getBalance(String address, String token) {
-        return get("/api/v1/biz/addresses/" + address + "/balance",
+        return get("/api/v1/biz/addresses/" + requireAddress(address) + "/balance",
                 Map.of("token", requireErc20Token(token)), Balance.class);
     }
 
@@ -106,7 +113,16 @@ public final class DepositClient implements AutoCloseable {
 
     /** 查询单个提款进度。 */
     public WithdrawalNotify getWithdrawal(String orderNo) {
-        return get("/api/v1/biz/withdrawals/" + orderNo, null, WithdrawalNotify.class);
+        return get("/api/v1/biz/withdrawals/" + requireOrderNo(orderNo), null, WithdrawalNotify.class);
+    }
+
+    /**
+     * 取消未上链提款（withdrawals:create）。仅 {@code created}/{@code pending} 且未广播可取消。
+     * 请求体仍走统一信封；业务 data 为空对象。
+     */
+    public WithdrawalNotify cancelWithdrawal(String orderNo) {
+        return post("/api/v1/biz/withdrawals/" + requireOrderNo(orderNo) + "/cancel",
+                null, Map.of(), WithdrawalNotify.class);
     }
 
     /**
@@ -234,6 +250,35 @@ public final class DepositClient implements AutoCloseable {
             throw new IllegalArgumentException("token (ERC20 address) is required");
         }
         return token.trim();
+    }
+
+    static AllocateRequest requireAllocation(AllocateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+        requireUserBinding(request.getUserBinding());
+        if (request.getLabel() == null || request.getLabel().isBlank()) {
+            throw new IllegalArgumentException("label is required");
+        }
+        Integer count = request.getCount();
+        if (count == null || count < 1 || count > 100) {
+            throw new IllegalArgumentException("count must be between 1 and 100");
+        }
+        return request;
+    }
+
+    static String requireUserBinding(String userBinding) {
+        if (userBinding == null || userBinding.isBlank()) {
+            throw new IllegalArgumentException("user_binding is required");
+        }
+        return userBinding.trim();
+    }
+
+    static String requireAddress(String address) {
+        if (address == null || address.isBlank()) {
+            throw new IllegalArgumentException("address is required");
+        }
+        return address.trim();
     }
 
     private static String stripTrailingSlash(String url) {

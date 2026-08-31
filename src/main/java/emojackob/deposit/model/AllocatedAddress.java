@@ -2,13 +2,14 @@ package emojackob.deposit.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-/** 分配子地址结果：{ allocated: [...] } 中的一项。 */
+/** 地址分配中的一项：{ address, index, user_binding, label, purpose }。 */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AllocatedAddress {
     private String address;
     private int index;
     private String userBinding;
     private String label;
+    private String purpose;
 
     public String getAddress() {
         return address;
@@ -40,5 +41,13 @@ public class AllocatedAddress {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public String getPurpose() {
+        return purpose;
+    }
+
+    public void setPurpose(String purpose) {
+        this.purpose = purpose;
     }
 }

@@ -1,17 +1,15 @@
 import emojackob.deposit.client.ApiException;
 import emojackob.deposit.client.DepositClient;
 import emojackob.deposit.client.DepositClientConfig;
+import emojackob.deposit.model.AddressAllocation;
 import emojackob.deposit.model.AllocateRequest;
-import emojackob.deposit.model.AllocatedAddress;
 import emojackob.deposit.model.Balance;
-import emojackob.deposit.model.BindRequest;
 import emojackob.deposit.model.CreateWithdrawalRequest;
 import emojackob.deposit.model.Deposit;
 import emojackob.deposit.model.Page;
 import emojackob.deposit.model.WithdrawalNotify;
 import emojackob.deposit.sign.Keys;
 import java.security.PrivateKey;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,29 +33,30 @@ public class BasicUsage {
                 .project("demo")                                // 可选，POST 请求体携带
                 .build())) {
 
-            // 1) 分配 10 个子地址
-            List<AllocatedAddress> allocated = client.allocateAddress(new AllocateRequest(10, null, null));
-            System.out.println("allocated = " + allocated.size());
+            // 1) 分配充值地址（user_binding / label / count 必填，创建后不可改绑）
+            AddressAllocation allocation = client.allocateAddress(
+                    new AllocateRequest("user-1001", "primary", 2));
+            System.out.println("allocated = " + allocation.getAllocated().size());
 
-            // 2) 绑定用户
-            String subAddress = allocated.get(0).getAddress();
-            System.out.println("bound = " + client.bindAddress(subAddress, new BindRequest("user-1001", null)));
+            String subAddress = allocation.getAllocated().get(0).getAddress();
+            AddressAllocation lookedUp = client.getAddressAllocation("user-1001");
+            System.out.println("lookup = " + lookedUp.getUserBinding() + " / " + subAddress);
 
-            // 3) 查询 ERC20 余额（token 必填合约地址）
+            // 2) 查询 ERC20 余额（token 必填合约地址）
             String usdt = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
             Balance balance = client.getBalance(subAddress, usdt);
             System.out.println("balance = " + balance.getBalance() + " " + balance.getToken());
 
-            // 4) 充值列表
+            // 3) 充值列表
             Page<Deposit> deposits = client.listDeposits(Map.of("page", "1", "page_size", "50"));
             System.out.println("deposits total = " + deposits.getTotal());
 
-            // 5) 提款记录分页列表（不要带 order_nos；按单号批量查用 listWithdrawals）
+            // 4) 提款记录分页列表（不要带 order_nos；按单号批量查用 listWithdrawals）
             Page<WithdrawalNotify> withdrawals = client.listWithdrawalRecords(
                     Map.of("page", "1", "page_size", "50"));
             System.out.println("withdrawals total = " + withdrawals.getTotal());
 
-            // 6) 创建提款（order_no 必填幂等键；同一单号同参数重试返回当前快照）
+            // 5) 创建提款（order_no 必填幂等键；同一单号同参数重试返回当前快照）
             WithdrawalNotify wd = client.createWithdrawal(new CreateWithdrawalRequest(
                     "WD-20260825-001", "pool", "0xreceiving", "100", usdt, ""));
             System.out.println("withdrawal = " + wd.getOrderNo() + " / " + wd.getStatus());
