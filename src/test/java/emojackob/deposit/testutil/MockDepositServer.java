@@ -1,8 +1,10 @@
 package emojackob.deposit.testutil;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import emojackob.deposit.sign.Rfc3986;
+import emojackob.deposit.util.Json;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 本地模拟 deposit-notify 服务端：按后端规则（canonical 排序 + body_hash + Ed25519）重建负载并验签，
@@ -23,15 +26,19 @@ import java.util.Map;
  */
 public final class MockDepositServer {
 
+    private static final String WITHDRAWALS = "/api/v1/biz/withdrawals";
+
     private final HttpServer server;
     private final KeyPair keyPair;
+    /** POST 创建的提款：order_no → 指纹 + 当前快照。 */
+    private final Map<String, StoredWithdrawal> created = new ConcurrentHashMap<>();
 
     public MockDepositServer(KeyPair keyPair) throws IOException {
         this.keyPair = keyPair;
         this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         this.server.createContext("/api/v1/biz/addresses", this::handleAddresses);
         this.server.createContext("/api/v1/biz/deposits", this::handleDeposits);
-        this.server.createContext("/api/v1/biz/withdrawals", this::handleWithdrawals);
+        this.server.createContext(WITHDRAWALS, this::handleWithdrawals);
         this.server.start();
     }
 
@@ -44,7 +51,8 @@ public final class MockDepositServer {
     }
 
     private void handleAddresses(HttpExchange ex) throws IOException {
-        if (!verify(ex)) {
+        byte[] body = ex.getRequestBody().readAllBytes();
+        if (!verify(ex, body)) {
             respond(ex, 401, errJson("unauthorized", "invalid signature"));
             return;
         }
@@ -65,7 +73,8 @@ public final class MockDepositServer {
     }
 
     private void handleDeposits(HttpExchange ex) throws IOException {
-        if (!verify(ex)) {
+        byte[] body = ex.getRequestBody().readAllBytes();
+        if (!verify(ex, body)) {
             respond(ex, 401, errJson("unauthorized", "invalid signature"));
             return;
         }
@@ -78,16 +87,18 @@ public final class MockDepositServer {
     }
 
     private void handleWithdrawals(HttpExchange ex) throws IOException {
-        if (!verify(ex)) {
+        byte[] body = ex.getRequestBody().readAllBytes();
+        if (!verify(ex, body)) {
             respond(ex, 401, errJson("unauthorized", "invalid signature"));
             return;
         }
-        if (ex.getRequestMethod().equals("POST")) {
-            respond(ex, 409, errJson("conflict", "order_no already exists"));
+        if (ex.getRequestMethod().equals("POST")
+                && WITHDRAWALS.equals(ex.getRequestURI().getPath())) {
+            handleCreateWithdrawal(ex, body);
             return;
         }
         // 与真实后端一致：无 order_nos 为分页列表；带 order_nos 为按单号批量查。
-        if (ex.getRequestURI().getPath().equals("/api/v1/biz/withdrawals")) {
+        if (WITHDRAWALS.equals(ex.getRequestURI().getPath())) {
             if (hasQueryKey(ex, "order_nos")) {
                 respond(ex, 200, "{\"project\":\"demo\",\"data\":{\"items\":["
                         + withdrawalNotifyJson("WD-1", "sent")
@@ -102,6 +113,34 @@ public final class MockDepositServer {
                     + withdrawalNotifyJson("WD-1", "sent")
                     + ",\"err\":null}");
         }
+    }
+
+    private void handleCreateWithdrawal(HttpExchange ex, byte[] body) throws IOException {
+        JsonNode data;
+        try {
+            data = Json.MAPPER.readTree(body).path("data");
+        } catch (IOException e) {
+            respond(ex, 400, errJson("bad_request", "invalid request body"));
+            return;
+        }
+        String orderNo = text(data, "order_no");
+        if (orderNo == null || orderNo.isBlank()) {
+            respond(ex, 400, errJson("bad_request", "order_no is required"));
+            return;
+        }
+        Fingerprint fp = Fingerprint.from(data);
+        StoredWithdrawal existing = created.get(orderNo);
+        if (existing != null) {
+            if (existing.matches(fp)) {
+                respond(ex, 200, "{\"project\":\"demo\",\"data\":" + existing.snapshot + ",\"err\":null}");
+            } else {
+                respond(ex, 409, errJson("conflict", "order_no already exists with different parameters"));
+            }
+            return;
+        }
+        String snapshot = withdrawalNotifyJson(orderNo, "created");
+        created.put(orderNo, new StoredWithdrawal(fp, snapshot));
+        respond(ex, 200, "{\"project\":\"demo\",\"data\":" + snapshot + ",\"err\":null}");
     }
 
     private static boolean hasQueryKey(HttpExchange ex, String key) {
@@ -129,7 +168,7 @@ public final class MockDepositServer {
                 + "\"error\":null,\"created_at\":\"2026-08-25T03:30:00.000Z\"}";
     }
 
-    private boolean verify(HttpExchange ex) throws IOException {
+    private boolean verify(HttpExchange ex, byte[] body) {
         Map<String, String> h = new HashMap<>();
         for (Map.Entry<String, List<String>> e : ex.getRequestHeaders().entrySet()) {
             h.put(e.getKey().toLowerCase(Locale.ROOT), e.getValue().get(0));
@@ -153,7 +192,6 @@ public final class MockDepositServer {
         pairs.add("timestamp=" + Rfc3986.encode(ts));
         pairs.sort(String::compareTo);
 
-        byte[] body = ex.getRequestBody().readAllBytes();
         String payload = ex.getRequestMethod() + "&" + ex.getRequestURI().getPath()
                 + "&" + String.join("&", pairs)
                 + "&body_hash=" + sha256Hex(body);
@@ -186,5 +224,81 @@ public final class MockDepositServer {
         ex.sendResponseHeaders(status, bytes.length);
         ex.getResponseBody().write(bytes);
         ex.close();
+    }
+
+    private static String text(JsonNode data, String field) {
+        JsonNode n = data.get(field);
+        if (n == null || n.isNull()) {
+            return null;
+        }
+        String s = n.asText();
+        return s.isEmpty() ? null : s;
+    }
+
+    private static String lower(String s) {
+        return s == null ? null : s.toLowerCase(Locale.ROOT);
+    }
+
+    /** 与后端 plan C 对齐：method 精确；to/token 忽略大小写；amount 按请求字符串；from 仅在重试带了才比。 */
+    private static final class Fingerprint {
+        final String method;
+        final String to;
+        final String amount;
+        final String token;
+        final String fromAddr;
+
+        Fingerprint(String method, String to, String amount, String token, String fromAddr) {
+            this.method = method;
+            this.to = to;
+            this.amount = amount;
+            this.token = token;
+            this.fromAddr = fromAddr;
+        }
+
+        static Fingerprint from(JsonNode data) {
+            return new Fingerprint(
+                    text(data, "method"),
+                    text(data, "to"),
+                    text(data, "amount"),
+                    text(data, "token"),
+                    text(data, "from_addr"));
+        }
+
+        boolean matches(Fingerprint retry) {
+            if (retry.method == null || !retry.method.equals(method)) {
+                return false;
+            }
+            if (!eqIgnoreCase(to, retry.to) || !eqIgnoreCase(token, retry.token)) {
+                return false;
+            }
+            if (amount == null || !amount.equals(retry.amount)) {
+                return false;
+            }
+            if (retry.fromAddr != null) {
+                return eqIgnoreCase(fromAddr, retry.fromAddr);
+            }
+            return true;
+        }
+
+        private static boolean eqIgnoreCase(String a, String b) {
+            if (a == null || b == null) {
+                return a == b;
+            }
+            return lower(a).equals(lower(b));
+        }
+    }
+
+    private static final class StoredWithdrawal {
+        final Fingerprint fingerprint;
+        final String snapshot;
+
+        StoredWithdrawal(Fingerprint fingerprint, String snapshot) {
+            this.fingerprint = fingerprint;
+            this.snapshot = snapshot;
+        }
+
+        boolean matches(Fingerprint retry) {
+            return fingerprint.matches(retry);
+        }
     }
 }

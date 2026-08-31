@@ -26,6 +26,7 @@ class DepositClientTest {
 
     static MockDepositServer server;
     static KeyPair kp;
+    static final String USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
     @BeforeAll
     static void start() throws Exception {
@@ -67,7 +68,7 @@ class DepositClientTest {
     @Test
     void getBalanceParses() {
         try (DepositClient c = client()) {
-            Balance b = c.getBalance("0xabc", "0xdAC17F958D2ee523a2206206994597C13D831ec7");
+            Balance b = c.getBalance("0xabc", USDT);
             assertEquals("USDT", b.getToken());
             assertEquals("1.5", b.getBalance());
             assertEquals("1500000", b.getBalanceRaw());
@@ -93,6 +94,18 @@ class DepositClientTest {
     }
 
     @Test
+    void createWithdrawalRequiresOrderNo() {
+        try (DepositClient c = client()) {
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest(null, "pool", "0x1", "1", USDT, null)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest("", "pool", "0x1", "1", USDT, null)));
+            assertThrows(IllegalArgumentException.class, () ->
+                    c.createWithdrawal(new CreateWithdrawalRequest("  ", "pool", "0x1", "1", USDT, null)));
+        }
+    }
+
+    @Test
     void createWithdrawalRequiresErc20Token() {
         try (DepositClient c = client()) {
             assertThrows(IllegalArgumentException.class, () ->
@@ -105,14 +118,41 @@ class DepositClientTest {
     }
 
     @Test
-    void errorEnvelopeThrowsApiException() {
+    void createWithdrawalSucceeds() {
         try (DepositClient c = client()) {
+            WithdrawalNotify wd = c.createWithdrawal(new CreateWithdrawalRequest(
+                    "WD-NEW", "pool", "0x1", "1", USDT, null));
+            assertEquals("WD-NEW", wd.getOrderNo());
+            assertEquals("created", wd.getStatus());
+            assertEquals("withdrawal:WD-NEW:created", wd.getEventKey());
+        }
+    }
+
+    @Test
+    void createWithdrawalIdempotentSameFingerprintReturnsCurrentSnapshot() {
+        try (DepositClient c = client()) {
+            CreateWithdrawalRequest req = new CreateWithdrawalRequest(
+                    "WD-IDEM", "pool", "0x1", "1", USDT, null);
+            WithdrawalNotify first = c.createWithdrawal(req);
+            WithdrawalNotify replay = c.createWithdrawal(req);
+            assertEquals("created", first.getStatus());
+            assertEquals("WD-IDEM", replay.getOrderNo());
+            assertEquals(first.getStatus(), replay.getStatus());
+            assertEquals(first.getEventKey(), replay.getEventKey());
+        }
+    }
+
+    @Test
+    void createWithdrawalConflictDifferentFingerprint() {
+        try (DepositClient c = client()) {
+            c.createWithdrawal(new CreateWithdrawalRequest(
+                    "WD-CONFLICT", "pool", "0x1", "1", USDT, null));
             ApiException e = assertThrows(ApiException.class, () ->
                     c.createWithdrawal(new CreateWithdrawalRequest(
-                            "WD-1", "pool", "0x1", "1",
-                            "0xdAC17F958D2ee523a2206206994597C13D831ec7", null)));
+                            "WD-CONFLICT", "pool", "0x1", "2", USDT, null)));
             assertEquals("conflict", e.getCode());
             assertEquals(409, e.getHttpStatus());
+            assertEquals("order_no already exists with different parameters", e.getMessage());
         }
     }
 

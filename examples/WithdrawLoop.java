@@ -92,6 +92,7 @@ public class WithdrawLoop {
         System.out.printf("每 %d 秒创建一笔提款，收款地址 %s…%n", intervalSecs, withdrawTo);
         while (true) {
             try {
+                // 每轮新单号；同一业务订单重试必须复用原来的 order_no（指纹相同 → 200 当前快照）
                 String orderNo = "wd-" + System.currentTimeMillis() + "-" + seq.incrementAndGet();
                 WithdrawalNotify wd = client.createWithdrawal(
                         new CreateWithdrawalRequest(orderNo, method, withdrawTo, amount, token, ""));

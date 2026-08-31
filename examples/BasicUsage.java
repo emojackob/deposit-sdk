@@ -57,15 +57,15 @@ public class BasicUsage {
                     Map.of("page", "1", "page_size", "50"));
             System.out.println("withdrawals total = " + withdrawals.getTotal());
 
-            // 6) 创建提款（order_no 留空自动生成；token 必填 ERC20 地址）
+            // 6) 创建提款（order_no 必填幂等键；同一单号同参数重试返回当前快照）
             WithdrawalNotify wd = client.createWithdrawal(new CreateWithdrawalRequest(
-                    "", "pool", "0xreceiving", "100", usdt, ""));
+                    "WD-20260825-001", "pool", "0xreceiving", "100", usdt, ""));
             System.out.println("withdrawal = " + wd.getOrderNo() + " / " + wd.getStatus());
 
         } catch (ApiException e) {
-            // err.code 分支：conflict / bad_request / unauthorized / forbidden / not_found
+            // err.code 分支：conflict = 同单号参数不同或该单已终态；不是「订单号重复」
             switch (e.getCode()) {
-                case "conflict" -> System.out.println("订单号重复：" + e.getMessage());
+                case "conflict" -> System.out.println("同单号参数冲突或已终态：" + e.getMessage());
                 case "unauthorized" -> System.out.println("签名或 Key 无效，请检查配置");
                 default -> System.out.println("http=" + e.getHttpStatus() + " code=" + e.getCode()
                         + " msg=" + e.getMessage());

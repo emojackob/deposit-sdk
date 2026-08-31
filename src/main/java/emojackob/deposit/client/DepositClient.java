@@ -88,11 +88,18 @@ public final class DepositClient implements AutoCloseable {
 
     // ---- 提款 ----
 
-    /** 创建提款订单；{@code token} 必填 ERC20 合约地址。返回与提款回调相同的 data 结构（同步响应无签名，回调带签名）。 */
+    /**
+     * 创建提款订单。{@code order_no} 必填，作为幂等键；{@code token} 必填 ERC20 合约地址。
+     * 同一 {@code order_no} 且指纹相同（method / to / amount / token，以及请求里带了的 from_addr）再次提交，
+     * 返回 200 与该订单当前快照（状态可能已推进），不是首次响应的字节拷贝。
+     * 同一 {@code order_no} 但参数不同，或该单已 cancelled/failed，服务端返回 409 {@code conflict}。
+     * 返回与提款回调相同的 data 结构（同步响应无签名，回调带签名）。
+     */
     public WithdrawalNotify createWithdrawal(CreateWithdrawalRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("request is required");
         }
+        requireOrderNo(request.getOrderNo());
         requireErc20Token(request.getToken());
         return post("/api/v1/biz/withdrawals", null, request, WithdrawalNotify.class);
     }
@@ -211,6 +218,14 @@ public final class DepositClient implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalArgumentException("cannot serialize request body", e);
         }
+    }
+
+    /** 业务创建提款必须自带 order_no（幂等键）；空值由服务端拒绝，客户端提前拦下。 */
+    static String requireOrderNo(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            throw new IllegalArgumentException("order_no is required");
+        }
+        return orderNo.trim();
     }
 
     /** 余额与提款的 token 必须是 ERC20 合约地址。 */

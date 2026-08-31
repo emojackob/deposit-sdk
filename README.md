@@ -1,6 +1,6 @@
 # deposit-sdk
 
-deposit-notify 对接 SDK（Java 17+）。业务标的仅为 ERC20：余额查询与创建提款的 `token` 必填合约地址，不接受空值或 `native`。负责：
+deposit-notify 对接 SDK（Java 17+）。业务标的仅为 ERC20：余额查询与创建提款的 `token` 必填合约地址，不接受空值或 `native`。创建提款的 `order_no` 必填，作为幂等键。负责：
 
 - 调用业务接口 `/api/v1/biz/*`：统一信封 + Ed25519 请求签名（SigV4 风格 body_hash）
 - 接收充值 / 提款回调：验签 + 时间窗 + 幂等键（`data.event_key`）
@@ -45,7 +45,8 @@ var allocated = client.allocateAddress(new AllocateRequest(10, null, null));
 var balance = client.getBalance(allocated.get(0).getAddress(),
         "0xdAC17F958D2ee523a2206206994597C13D831ec7");
 
-// 创建提款（token 必填 ERC20 合约地址；不接受空值或 native）
+// 创建提款（order_no 必填幂等键；token 必填 ERC20 合约地址）
+// 同一 order_no + 相同指纹重试 → 200 当前快照；参数不同 → 409 conflict
 var wd = client.createWithdrawal(new CreateWithdrawalRequest(
         "WD-20260825-001", "pool", "0x…", "100",
         "0xdAC17F958D2ee523a2206206994597C13D831ec7", ""));
@@ -65,6 +66,8 @@ var items = client.listWithdrawals(List.of("WD-20260825-001"));
 ```
 
 错误处理：业务失败（`err != null`）抛 `ApiException`，含 `code` / `message` / `httpStatus`。
+`409 conflict` 表示同一 `order_no` 已存在但指纹不同，或该单已 `cancelled`/`failed`，不是简单的「订单号重复」。
+同一 `order_no` 且参数相同的重试会成功，返回该订单当前状态快照。
 
 ## 回调验签
 
