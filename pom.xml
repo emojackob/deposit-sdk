@@ -5,7 +5,7 @@
 
   <groupId>io.github.emojackob.deposit</groupId>
   <artifactId>deposit-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>deposit-sdk</name>
@@ -19,6 +19,11 @@
       <name>GitHub Packages</name>
       <url>https://maven.pkg.github.com/emojackob/deposit-sdk</url>
     </repository>
+    <snapshotRepository>
+      <id>github</id>
+      <name>GitHub Packages Snapshots</name>
+      <url>https://maven.pkg.github.com/emojackob/deposit-sdk</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <properties>

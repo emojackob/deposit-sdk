@@ -17,7 +17,7 @@ mvn install
 <dependency>
   <groupId>io.github.emojackob.deposit</groupId>
   <artifactId>deposit-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
