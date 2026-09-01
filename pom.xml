@@ -6,11 +6,20 @@
   <groupId>io.github.emojackob.deposit</groupId>
   <artifactId>deposit-sdk</artifactId>
   <version>0.1.0</version>
+  <packaging>jar</packaging>
 
   <name>deposit-sdk</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <url>https://github.com/emojackob/deposit-sdk</url>
   <description>deposit-notify 对接 SDK：统一信封 + Ed25519 签名（请求签名 / 回调验签）</description>
+
+  <!-- mvn deploy 目标：GitHub Packages（id 须与 ~/.m2/settings.xml 中 server 一致） -->
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/emojackob/deposit-sdk</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -49,6 +58,24 @@
   </dependencies>
 
   <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.1.2</version>
+      </plugin>
+    </plugins>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
