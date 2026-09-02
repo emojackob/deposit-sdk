@@ -1,20 +1,9 @@
 package emojackob.deposit.evm;
 
 /**
- * 链下签名固定向量：私钥、地址、data 全部硬编码，多次运行输出一致。
+ * 链下签名固定向量：私钥、地址、data 全部硬编码，多次运行签名输出一致。
  *
- * <p>stdout 即返回给前端的 JSON 体（{@code Content-Type: application/json}）：
- *
- * <pre>
- * {"data":"0x…","signature":"0x…"}
- * </pre>
- *
- * 前端（ethers / viem）原样传入合约，不要再解码：
- *
- * <pre>
- * const { data, signature } = await res.json();
- * await contract.depositToken(amount, data, signature);
- * </pre>
+ * <p>调用入口 {@link DepositDataSigner#signDeposit}，stdout 先打验证者密钥，再打出参 JSON。
  *
  * <pre>
  *   mvn -q compile exec:java
@@ -33,6 +22,11 @@ public final class SignDepositDataExample {
     public static final long P3 = 5;
 
     public static void main(String[] args) {
+        // 验证者密钥与下面固定向量签名无关；address 给合约验证者，privateKey 留服务端。
+        SignerKey verifier = generateVerifierKey();
+        System.out.println("verifier.address=" + verifier.getAddress());
+        System.out.println("verifier.privateKey=" + verifier.getPrivateKeyHex());
+
         String derived = DepositDataSigner.addressFromPrivateKey(PRIVATE_KEY);
         if (!ADDRESS.equalsIgnoreCase(derived)) {
             throw new IllegalStateException("address mismatch: " + derived);
@@ -53,5 +47,19 @@ public final class SignDepositDataExample {
         //   const { data, signature } = await res.json();
         //   await contract.depositToken(amount, data, signature);
         System.out.println(out.toJson());
+    }
+
+    /**
+     * 生成验证者 secp256k1 密钥（一次性）。
+     *
+     * <ul>
+     *   <li>{@code address}：交给合约验证者（{@code signer}），链上 ecrecover 用
+     *   <li>{@code privateKey}：只留服务端，给 {@link DepositDataSigner#signDeposit} 用，不要返回前端
+     * </ul>
+     *
+     * 不参与本类固定向量的签名 / 验签。
+     */
+    static SignerKey generateVerifierKey() {
+        return DepositDataSigner.generateSigner();
     }
 }

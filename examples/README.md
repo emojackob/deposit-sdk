@@ -34,10 +34,10 @@ java -cp "$CP:../target/deposit-sdk-0.1.0.jar" CallbackReceiver
 javac -cp "../target/deposit-sdk-0.1.0.jar:$CP" WithdrawLoop.java
 java -cp "$CP:../target/deposit-sdk-0.1.0.jar" WithdrawLoop
 
-# 示例 5：DepositWithdrawState 链下签名（固定向量，stdout 为给前端的 JSON）
+# 示例 5：DepositWithdrawState 链下签名（固定向量 JSON）+ 生成验证者密钥
 # 推荐直接：
 #   mvn -q compile exec:java
-# 输出 {"data":"0x…","signature":"0x…"}
+# 输出 verifier.address（给合约验证者）/ verifier.privateKey，以及 {"data":"0x…","signature":"0x…"}
 # 前端：const { data, signature } = await res.json();
 #       await contract.depositToken(amount, data, signature);
 ```

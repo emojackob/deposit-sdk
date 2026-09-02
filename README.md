@@ -139,7 +139,7 @@ const { data, signature } = await res.json();
 await contract.depositToken(amount, data, signature);
 ```
 
-固定向量示例（私钥/消息硬编码，多次运行结果相同；stdout 即上面那段 JSON）：
+固定向量示例（私钥/消息硬编码，多次运行签名结果相同；另打印一对验证者密钥，address 给合约验证者）：
 
 ```bash
 mvn -q compile exec:java

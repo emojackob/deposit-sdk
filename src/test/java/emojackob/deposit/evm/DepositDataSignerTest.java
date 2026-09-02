@@ -44,4 +44,23 @@ class DepositDataSignerTest {
                 "{\"data\":\"" + out.getDataHex() + "\",\"signature\":\"" + out.getSignatureHex() + "\"}",
                 out.toJson());
     }
+
+    @Test
+    void generateSignerDerivesMatchingAddressAndCanSign() {
+        SignerKey signer = DepositDataSigner.generateSigner();
+        assertEquals(66, signer.getPrivateKeyHex().length());
+        assertEquals("0x", signer.getPrivateKeyHex().substring(0, 2));
+        assertEquals(
+                signer.getAddress().toLowerCase(),
+                DepositDataSigner.addressFromPrivateKey(signer.getPrivateKeyHex()).toLowerCase());
+
+        SignedDeposit out = DepositDataSigner.signDeposit(
+                signer.getPrivateKeyHex(),
+                SignDepositDataExample.RECEIVER3,
+                SignDepositDataExample.P1,
+                SignDepositDataExample.P2,
+                SignDepositDataExample.P3);
+        assertEquals(128, out.getData().length);
+        assertEquals(65, out.getSignature().length);
+    }
 }

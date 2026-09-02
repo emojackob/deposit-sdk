@@ -2,6 +2,7 @@ package emojackob.deposit.evm;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 import org.web3j.crypto.Keys;
@@ -11,12 +12,27 @@ import org.web3j.utils.Numeric;
 /**
  * 与 {@code DepositWithdrawState.depositHash} 对齐的链下 ECDSA 签名。
  *
- * <p>对外入口是 {@link #signDeposit}：入参为私钥和分账比例，出参是合约
+ * <p>对外入口：{@link #generateSigner} 生成合约 {@code signer} 密钥；
+ * {@link #signDeposit} 入参为私钥和分账比例，出参是合约
  * {@code depositToken(amount, data, signature)} 的 {@code data} / {@code signature} 两段 bytes。
  */
 public final class DepositDataSigner {
 
     private DepositDataSigner() {}
+
+    /**
+     * 生成验证者用的 secp256k1 密钥。地址交给合约验证者，私钥仅服务端保管。
+     */
+    public static SignerKey generateSigner() {
+        try {
+            ECKeyPair keyPair = Keys.createEcKeyPair();
+            String privateKeyHex = Numeric.toHexStringWithPrefixZeroPadded(keyPair.getPrivateKey(), 64);
+            String address = Keys.toChecksumAddress(Keys.getAddress(keyPair));
+            return new SignerKey(privateKeyHex, address);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("secp256k1 key generation failed", e);
+        }
+    }
 
     /**
      * 构造 {@code depositToken} 所需的 data 与 signature。

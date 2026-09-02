@@ -1,8 +1,7 @@
 import emojackob.deposit.evm.SignDepositDataExample;
 
 /**
- * 示例 5：DepositWithdrawState.depositToken 链下 ECDSA 签名（固定向量）。
- * stdout 即返回给前端的 JSON：{"data":"0x…","signature":"0x…"}
+ * 示例 5：打印验证者密钥（address 给合约验证者），再输出固定向量 JSON：{"data":"0x…","signature":"0x…"}
  * 用法：
  *   mvn -q compile exec:java
  * 或：
