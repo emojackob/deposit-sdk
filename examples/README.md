@@ -33,6 +33,13 @@ java -cp "$CP:../target/deposit-sdk-0.1.0.jar" CallbackReceiver
 # 示例 4：端到端调试（回调监听 + 定时提款循环）
 javac -cp "../target/deposit-sdk-0.1.0.jar:$CP" WithdrawLoop.java
 java -cp "$CP:../target/deposit-sdk-0.1.0.jar" WithdrawLoop
+
+# 示例 5：DepositWithdrawState 链下签名（固定向量，stdout 为给前端的 JSON）
+# 推荐直接：
+#   mvn -q compile exec:java
+# 输出 {"data":"0x…","signature":"0x…"}
+# 前端：const { data, signature } = await res.json();
+#       await contract.depositToken(amount, data, signature);
 ```
 
 Windows 下把 `.:` 换成 `.;`。

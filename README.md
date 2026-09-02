@@ -113,6 +113,38 @@ mvn test
 
 测试覆盖：RFC3986 编码、canonical 排序、签名负载格式、Ed25519 验签往返、回调验签（篡改/过期）、以及本地 HTTP 服务端按后端规则重建负载验签的端到端用例。
 
+## 合约链下签名（`depositToken` 的 data / signature）
+
+入口：`DepositDataSigner.signDeposit`。
+
+```java
+import emojackob.deposit.evm.DepositDataSigner;
+import emojackob.deposit.evm.SignedDeposit;
+
+// 入参：signer 私钥、receiver3、三份百分比（之和 = 100）
+SignedDeposit out = DepositDataSigner.signDeposit(
+        "0xfb69d66f0870bd915cd6ca7e7faea08093e8bf3dd1c8e61929f024d2d5301a39",
+        "0x000000000000000000000000000000000000cafe",
+        50, 45, 5);
+
+// 返回给前端的 JSON（Content-Type: application/json）
+// {"data":"0x…","signature":"0x…"}
+String json = out.toJson();
+```
+
+前端（ethers / viem）原样传入合约，不要解码、不要当 Base64：
+
+```js
+const { data, signature } = await res.json();
+await contract.depositToken(amount, data, signature);
+```
+
+固定向量示例（私钥/消息硬编码，多次运行结果相同；stdout 即上面那段 JSON）：
+
+```bash
+mvn -q compile exec:java
+```
+
 ## 示例
 
-独立可运行的完整示例见 [`examples/`](examples/)：密钥生成、完整业务流、回调接收端、端到端调试（回调监听 + 定时提款）。
+独立可运行的完整示例见 [`examples/`](examples/)：密钥生成、完整业务流、回调接收端、端到端调试（回调监听 + 定时提款）、合约链下签名。
